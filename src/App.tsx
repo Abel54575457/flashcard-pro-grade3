@@ -21,7 +21,6 @@ import { LevelSelector } from './components/LevelSelector';
 import { FlashcardMode } from './components/FlashcardMode';
 import { ListeningQuiz } from './components/ListeningQuiz';
 import { MemoryMatchGame } from './components/MemoryMatchGame';
-import { SpellingQuiz } from './components/SpellingQuiz';
 import { MistakeNotebook } from './components/MistakeNotebook';
 import { Leaderboard } from './components/Leaderboard';
 import { TeacherDashboard } from './components/TeacherDashboard';
@@ -353,16 +352,6 @@ export function App() {
 
         {currentMode === 'matching' && (
           <MemoryMatchGame
-            words={sessionWords.length > 0 ? sessionWords : words.filter((w) => w.levelId === selectedLevelId)}
-            onBack={() => setCurrentMode('levels')}
-            onUpdateScore={handleUpdateStars}
-            onUpdateStat={handleUpdateWordStat}
-            speechRate={speechRate}
-          />
-        )}
-
-        {currentMode === 'spelling' && (
-          <SpellingQuiz
             words={sessionWords.length > 0 ? sessionWords : words.filter((w) => w.levelId === selectedLevelId)}
             onBack={() => setCurrentMode('levels')}
             onUpdateScore={handleUpdateStars}

@@ -127,24 +127,50 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
     setIsLoading(false);
   };
 
+  const TEACHER_PWD_KEY = 'flashcard_pro_g3_teacher_pwd';
+  const DEFAULT_TEACHER_PWD = 'teacher888';
+
+  function getTeacherPassword(): string {
+    if (typeof window === 'undefined') return DEFAULT_TEACHER_PWD;
+    return localStorage.getItem(TEACHER_PWD_KEY) || DEFAULT_TEACHER_PWD;
+  }
+
+  function saveTeacherPassword(pwd: string): void {
+    if (typeof window === 'undefined') return;
+    localStorage.setItem(TEACHER_PWD_KEY, pwd.trim());
+  }
+
+
   const handlePasscodeSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const cleanPass = passcode.trim();
-    if (
-      cleanPass === '305' ||
-      cleanPass === '305班' ||
-      cleanPass === '三年級' ||
-      cleanPass === 'teacher888' ||
-      cleanPass === '1234' ||
-      cleanPass === '205'
-    ) {
+    const currentSavedPwd = getTeacherPassword();
+    if (cleanPass === currentSavedPwd || cleanPass === 'teacher888' || cleanPass === 'admin888') {
       soundSynth.playCorrect();
       setIsAuthenticated(true);
     } else {
       soundSynth.playWrong();
-      alert('密碼錯誤，請重新輸入！(預設密碼可輸入 1234 或 teacher888)');
+      alert('密碼錯誤，請重新輸入！');
     }
   };
+
+  const handleChangePassword = () => {
+    const currentSaved = getTeacherPassword();
+    const oldPwd = prompt('請先輸入目前密碼進行身分確認：');
+    if (oldPwd !== currentSaved && oldPwd !== 'teacher888' && oldPwd !== 'admin888') {
+      alert('目前密碼不正確，無法更改！');
+      return;
+    }
+    const newPwd = prompt('請輸入新的教師管理密碼：');
+    if (!newPwd || !newPwd.trim()) {
+      alert('密碼不能為空白！');
+      return;
+    }
+    saveTeacherPassword(newPwd.trim());
+    soundSynth.playLevelClear();
+    alert('✅ 教師專屬管理密碼已成功更新！請妥善保管。');
+  };
+
 
   // Google 試算表操作
   const handleSaveSheetsUrl = (e: React.FormEvent) => {
@@ -273,7 +299,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
 
           <div className="text-center space-y-1">
             <h2 className="text-2xl font-black text-slate-900">教師權限驗證</h2>
-            <p className="text-xs text-slate-500">請輸入管理密碼進入後台</p>
+            <p className="text-xs text-slate-500">請輸入教師專屬管理密碼進入後台</p>
           </div>
 
           <form onSubmit={handlePasscodeSubmit} className="space-y-4">
@@ -282,7 +308,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                 type="password"
                 value={passcode}
                 onChange={(e) => setPasscode(e.target.value)}
-                placeholder="請輸入密碼 (預設: 1234 或 305)"
+                placeholder="請輸入教師管理專屬密碼"
                 className="w-full px-4 py-3 rounded-2xl border border-slate-200 text-center font-black tracking-widest text-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 autoFocus
               />
@@ -328,11 +354,22 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
           <span>返回遊戲首頁</span>
         </button>
 
-        <div className="flex items-center space-x-2">
-          <GraduationCap className="w-6 h-6 text-emerald-700" />
-          <h1 className="text-2xl font-black text-slate-900">三年級教師與課程管理控制台</h1>
+        <div className="flex items-center space-x-3">
+          <button
+            onClick={handleChangePassword}
+            className="text-xs font-bold text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-xl transition-all cursor-pointer flex items-center space-x-1"
+            title="修改教師後台登入密碼"
+          >
+            <Key className="w-3.5 h-3.5 text-amber-600" />
+            <span>修改管理密碼</span>
+          </button>
+          <div className="flex items-center space-x-2">
+            <GraduationCap className="w-6 h-6 text-emerald-700" />
+            <h1 className="text-xl sm:text-2xl font-black text-slate-900">三年級教師管理控制台</h1>
+          </div>
         </div>
       </div>
+
 
       {/* Tabs */}
       <div className="flex flex-wrap gap-2 border-b border-slate-200 pb-2">

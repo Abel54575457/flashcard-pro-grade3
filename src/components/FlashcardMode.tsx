@@ -170,12 +170,18 @@ export const FlashcardMode: React.FC<FlashcardModeProps> = ({
             </div>
 
             {/* Main Word */}
-            <div className="my-auto space-y-4">
-              <h2 className="text-5xl sm:text-6xl font-black text-slate-900 tracking-tight">
+            <div className="my-auto space-y-3">
+              <h2 className="text-4xl sm:text-5xl font-black text-slate-900 tracking-tight leading-tight">
                 {currentWord.word}
               </h2>
 
-              <div className="flex items-center justify-center space-x-2">
+              {currentWord.phonetic && (
+                <div className="inline-block px-3.5 py-1 rounded-full bg-slate-100 text-slate-700 font-mono text-sm sm:text-base font-bold border border-slate-200 shadow-2xs">
+                  {currentWord.phonetic}
+                </div>
+              )}
+
+              <div className="flex items-center justify-center space-x-2 pt-1">
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
@@ -205,15 +211,26 @@ export const FlashcardMode: React.FC<FlashcardModeProps> = ({
           <div className="absolute inset-0 w-full h-full backface-hidden rotate-y-180 rounded-3xl p-8 flex flex-col justify-between items-center text-center bg-gradient-to-b from-slate-900 via-indigo-950 to-slate-900 text-white shadow-2xl">
             
             <div className="w-full flex items-center justify-between text-indigo-300 text-xs font-bold">
-              <span>{currentWord.partOfSpeech}</span>
-              <span>音標：{currentWord.phonetic}</span>
+              <span>{currentWord.partOfSpeech || (currentWord.sectionCode ? `單元小節: ${currentWord.sectionCode}` : '')}</span>
+              {currentWord.phonetic && (
+                <span className="font-mono text-xs sm:text-sm text-yellow-300 bg-white/10 px-3 py-1 rounded-full border border-white/20 font-bold">
+                  音標：{currentWord.phonetic}
+                </span>
+              )}
             </div>
 
             {/* Back Chinese Word */}
-            <div className="my-auto space-y-4 max-w-lg">
-              <h3 className="text-4xl sm:text-5xl font-black text-yellow-300 tracking-tight">
+            <div className="my-auto space-y-3 max-w-lg">
+              <h3 className="text-3xl sm:text-4xl font-black text-yellow-300 tracking-tight leading-snug">
                 {currentWord.translation}
               </h3>
+
+              {currentWord.phonetic && (
+                <p className="font-mono text-sm sm:text-base text-indigo-200 font-bold">
+                  {currentWord.phonetic}
+                </p>
+              )}
+
 
               <div className="p-4 rounded-2xl bg-white/10 backdrop-blur-md border border-white/15 space-y-2 text-left">
                 <div className="flex items-start justify-between">

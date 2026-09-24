@@ -264,6 +264,9 @@ export const VocabularyMasterListModal: React.FC<VocabularyMasterListModalProps>
                           <h3 className="font-extrabold text-base text-stone-900 tracking-tight leading-snug">
                             {word.word}
                           </h3>
+                          {word.phonetic && (
+                            <span className="text-[11px] font-mono text-stone-500 font-semibold">{word.phonetic}</span>
+                          )}
                         </div>
                         <button
                           onClick={() => playWordAudio(word.word)}
@@ -273,6 +276,7 @@ export const VocabularyMasterListModal: React.FC<VocabularyMasterListModalProps>
                           <Volume2 className="w-4 h-4" />
                         </button>
                       </div>
+
 
                       {/* Translation */}
                       <p className="text-sm font-bold text-amber-900 mt-1.5 leading-relaxed">
@@ -309,7 +313,13 @@ export const VocabularyMasterListModal: React.FC<VocabularyMasterListModalProps>
                     <tr key={word.id} className="hover:bg-amber-50/40 transition-colors">
                       <td className="py-2.5 px-3 font-bold text-amber-800">U{word.levelId}</td>
                       <td className="py-2.5 px-3 text-stone-600 font-bold">{word.sectionCode || word.category}</td>
-                      <td className="py-2.5 px-3 font-extrabold text-stone-900">{word.word}</td>
+                      <td className="py-2.5 px-3">
+                        <div className="font-extrabold text-stone-900">{word.word}</div>
+                        {word.phonetic && (
+                          <div className="text-[10px] font-mono text-stone-500 font-semibold">{word.phonetic}</div>
+                        )}
+                      </td>
+
                       <td className="py-2.5 px-3 font-bold text-amber-950">{word.translation}</td>
                       <td className="py-2.5 px-3 text-stone-500 text-[11px]">{word.hint || `p.${word.page}`}</td>
                       <td className="py-2.5 px-3 text-center">

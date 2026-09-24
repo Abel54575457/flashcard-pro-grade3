@@ -312,13 +312,13 @@ export const LevelSelector: React.FC<LevelSelectorProps> = ({
                     </div>
 
                     {/* Mode Buttons */}
-                    <div className="grid grid-cols-4 gap-1.5 pt-1 text-xs font-black">
+                    <div className="grid grid-cols-3 gap-2 pt-1 text-xs font-black">
                       <button
                         onClick={() => {
                           soundSynth.playFlip();
                           onSelectLevel(levelId, 'flashcard', selectedSec);
                         }}
-                        className="py-2 px-1 rounded-xl bg-stone-900 text-stone-100 hover:bg-stone-800 transition-all flex items-center justify-center space-x-1 shadow-xs active:scale-95"
+                        className="py-2.5 px-2 rounded-xl bg-stone-900 text-stone-100 hover:bg-stone-800 transition-all flex items-center justify-center space-x-1 shadow-xs active:scale-95 cursor-pointer"
                         title="翻卡朗讀與記憶"
                       >
                         <span>🎴 閃卡</span>
@@ -329,7 +329,7 @@ export const LevelSelector: React.FC<LevelSelectorProps> = ({
                           soundSynth.playFlip();
                           onSelectLevel(levelId, 'listening', selectedSec);
                         }}
-                        className="py-2 px-1 rounded-xl bg-amber-100 text-amber-900 hover:bg-amber-200 transition-all flex items-center justify-center space-x-1 border border-amber-200 active:scale-95"
+                        className="py-2.5 px-2 rounded-xl bg-amber-100 text-amber-900 hover:bg-amber-200 transition-all flex items-center justify-center space-x-1 border border-amber-200 active:scale-95 cursor-pointer"
                         title="聽力四選一測驗"
                       >
                         <span>🎧 聽力</span>
@@ -340,23 +340,13 @@ export const LevelSelector: React.FC<LevelSelectorProps> = ({
                           soundSynth.playFlip();
                           onSelectLevel(levelId, 'matching', selectedSec);
                         }}
-                        className="py-2 px-1 rounded-xl bg-emerald-100 text-emerald-900 hover:bg-emerald-200 transition-all flex items-center justify-center space-x-1 border border-emerald-200 active:scale-95"
+                        className="py-2.5 px-2 rounded-xl bg-emerald-100 text-emerald-900 hover:bg-emerald-200 transition-all flex items-center justify-center space-x-1 border border-emerald-200 active:scale-95 cursor-pointer"
                         title="雙語連連看配對"
                       >
                         <span>🧩 配對</span>
                       </button>
-
-                      <button
-                        onClick={() => {
-                          soundSynth.playFlip();
-                          onSelectLevel(levelId, 'spelling', selectedSec);
-                        }}
-                        className="py-2 px-1 rounded-xl bg-purple-100 text-purple-900 hover:bg-purple-200 transition-all flex items-center justify-center space-x-1 border border-purple-200 active:scale-95"
-                        title="拼字大挑戰"
-                      >
-                        <span>✍️ 拼字</span>
-                      </button>
                     </div>
+
                   </div>
                 ) : (
                   <div className="pt-2 border-t border-stone-100 text-center py-2 text-xs font-bold text-stone-500">

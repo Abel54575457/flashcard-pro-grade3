@@ -89,12 +89,14 @@ async function ensureAuth(): Promise<boolean> {
   return true;
 }
 
+const FIRESTORE_COLLECTION = 'grade3_users';
+
 export async function syncUserToFirestore(userProfile: UserProfile): Promise<boolean> {
   await ensureAuth();
   if (!db) return false;
 
   try {
-    const docRef = doc(db, 'users', userProfile.seatNumber);
+    const docRef = doc(db, FIRESTORE_COLLECTION, userProfile.seatNumber);
     const snap = await getDoc(docRef);
     let toSave = userProfile;
 
@@ -132,7 +134,7 @@ export async function fetchUserFromFirestore(seatNumber: string): Promise<UserPr
   if (!db) return null;
 
   try {
-    const docRef = doc(db, 'users', seatNumber);
+    const docRef = doc(db, FIRESTORE_COLLECTION, seatNumber);
     const snap = await getDoc(docRef);
     if (snap.exists()) {
       return snap.data() as UserProfile;
@@ -149,7 +151,7 @@ export async function fetchAllStudentsFromFirestore(): Promise<UserProfile[]> {
   if (!db) return [];
 
   try {
-    const colRef = collection(db, 'users');
+    const colRef = collection(db, FIRESTORE_COLLECTION);
     const snap = await getDocs(colRef);
     const result: UserProfile[] = [];
     snap.forEach((docSnap) => {
@@ -161,3 +163,4 @@ export async function fetchAllStudentsFromFirestore(): Promise<UserProfile[]> {
     return [];
   }
 }
+

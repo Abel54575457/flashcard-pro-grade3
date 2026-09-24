@@ -1,6 +1,7 @@
 import { UserProfile, WordItem, WordStat, ThemeColor } from '../types';
 import { GRADE_3_WORDS } from '../data/grade3Words';
 import { syncUserToFirestore, fetchUserFromFirestore } from './firebase';
+import { syncStudentToGoogleSheets } from './googleSheets';
 
 const USER_PROFILE_KEY = 'flashcard_pro_g3_user_profile';
 const LAST_SEAT_KEY = 'flashcard_pro_g3_last_seat';
@@ -72,11 +73,14 @@ export function saveLocalProfile(profile: UserProfile): void {
   localStorage.setItem(seatKey, JSON.stringify(profile));
   localStorage.setItem(USER_PROFILE_KEY, JSON.stringify(profile));
   localStorage.setItem(LAST_SEAT_KEY, profile.seatNumber);
-  // 同步給 Firestore (若有設定 Firebase)，訪客不寫入雲端排行榜
+  // 1. 同步給 Firebase Firestore (跨裝置雲端同步)
   if (profile.seatNumber !== '訪客') {
     syncUserToFirestore(profile).catch(() => {});
+    // 2. 背景同步給 Google 試算表 (若老師有填寫試算表網址)
+    syncStudentToGoogleSheets(profile, GRADE_3_WORDS).catch(() => {});
   }
 }
+
 
 export function loadUserProfileSync(seatNumber: string): UserProfile {
   const local = getLocalProfileForSeat(seatNumber);

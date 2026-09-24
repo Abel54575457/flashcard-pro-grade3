@@ -482,7 +482,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                   return (
                     <tr key={st.seatNumber} className="hover:bg-slate-50 font-semibold">
                       <td className="py-3 px-4 font-black text-emerald-700">座號 {st.seatNumber}</td>
-                      <td className="py-3 px-4">{st.classCode || '三年級'}</td>
+                      <td className="py-3 px-4">{st.classCode || '305 班'}</td>
                       <td className="py-3 px-4 font-bold text-amber-700">第 {st.unlockedLevel || 1} 章</td>
                       <td className="py-3 px-4 text-amber-600 font-bold">⭐ {st.stars || 0}</td>
                       <td className="py-3 px-4 font-bold text-rose-600">🔥 {st.streakDays || 1} 天</td>

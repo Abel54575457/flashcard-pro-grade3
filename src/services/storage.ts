@@ -9,7 +9,7 @@ const CUSTOM_WORDS_KEY = 'flashcard_pro_g3_words_v1';
 
 const getSeatKey = (seat: string) => `flashcard_pro_g3_user_profile_${seat}`;
 
-export function createDefaultProfile(seatNumber: string = '01', classCode: string = '三年級'): UserProfile {
+export function createDefaultProfile(seatNumber: string = '01', classCode: string = '305 班'): UserProfile {
   const isGuest = seatNumber === '訪客';
   return {
     seatNumber,
@@ -152,7 +152,7 @@ export function mergeUserProfiles(local: UserProfile, remote: UserProfile): User
     ...local,
     ...remote,
     seatNumber: local.seatNumber || remote.seatNumber,
-    classCode: local.classCode || remote.classCode || '三年級',
+    classCode: local.classCode || remote.classCode || '305 班',
     themeColor: local.themeColor || remote.themeColor || 'emerald',
     unlockedLevel,
     stars,

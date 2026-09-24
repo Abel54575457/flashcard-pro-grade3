@@ -37,7 +37,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
     if (!seat.trim()) return;
     const formattedSeat = seat.trim() === '訪客' ? '訪客' : seat.trim().padStart(2, '0');
     soundSynth.playCorrect();
-    onLogin(formattedSeat, '三年級', color);
+    onLogin(formattedSeat, '305 班', color);
     onClose();
   };
 

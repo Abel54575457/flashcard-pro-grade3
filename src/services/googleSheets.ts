@@ -39,7 +39,7 @@ function buildStudentPayload(profile: UserProfile, words: WordItem[]) {
 
   return {
     seatNumber: profile.seatNumber,
-    classCode: profile.classCode || '三年級',
+    classCode: profile.classCode || '305 班',
     stars: profile.stars || 0,
     unlockedLevel: profile.unlockedLevel || 1,
     masteryRate: Math.round(masteryRate),
@@ -99,7 +99,7 @@ export async function syncAllStudentsToGoogleSheets(
 
     const payload = {
       action: 'batch_sync',
-      classCode: '三年級',
+      classCode: '305 班',
       students: formattedList,
       timestamp: new Date().toISOString(),
     };
@@ -138,7 +138,7 @@ export async function logQuizToGoogleSheets(record: {
   try {
     const payload = {
       action: 'log_quiz',
-      classCode: '三年級',
+      classCode: '305 班',
       seatNumber: record.seatNumber,
       modeName: record.modeName,
       unit: `第 ${record.unit} 章`,

@@ -38,18 +38,34 @@ export const FlashcardMode: React.FC<FlashcardModeProps> = ({
   const [isFlipped, setIsFlipped] = useState(false);
   const [showHint, setShowHint] = useState(false);
   const [isFinished, setIsFinished] = useState(false);
+  const [isSwitching, setIsSwitching] = useState(false);
+  const [revealedWord, setRevealedWord] = useState<WordItem | null>(null);
 
   const currentWord = words[currentIndex];
   const currentStat = currentWord ? wordStats[currentWord.id] : undefined;
+  // 背面顯示的單字：嚴格鎖定在翻面時揭示的單字，絕不在轉場期間偷跑下一題答案
+  const displayedBackWord = revealedWord || currentWord;
 
-  // 切換到新單字時自動發音並重置卡片面
+  // 自適應字體大小計算，避免超長專有名詞或片語溢出撞到底部評分按鈕
+  const getWordFontSize = (text: string) => {
+    if (text.length > 35) return 'text-xl sm:text-2xl';
+    if (text.length > 22) return 'text-2xl sm:text-3xl';
+    if (text.length > 14) return 'text-3xl sm:text-4xl';
+    return 'text-4xl sm:text-5xl';
+  };
+
+  const getTransFontSize = (text: string) => {
+    if (text.length > 28) return 'text-xl sm:text-2xl';
+    if (text.length > 16) return 'text-2xl sm:text-3xl';
+    return 'text-3xl sm:text-4xl';
+  };
+
+  // 切換到新單字且動畫完成時自動發音
   useEffect(() => {
-    if (currentWord) {
-      setIsFlipped(false);
-      setShowHint(false);
+    if (currentWord && !isSwitching) {
       speakWord(currentWord.word, speechRate);
     }
-  }, [currentIndex, currentWord, speechRate]);
+  }, [currentIndex, isSwitching, speechRate]);
 
   if (!currentWord || isFinished) {
     return (
@@ -67,6 +83,8 @@ export const FlashcardMode: React.FC<FlashcardModeProps> = ({
               onClick={() => {
                 setCurrentIndex(0);
                 setIsFinished(false);
+                setIsFlipped(false);
+                setRevealedWord(null);
               }}
               className="px-6 py-3 rounded-2xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-extrabold text-sm transition-all"
             >
@@ -85,6 +103,8 @@ export const FlashcardMode: React.FC<FlashcardModeProps> = ({
   }
 
   const handleRating = (rating: 'remembered' | 'fuzzy' | 'forgot') => {
+    if (isSwitching || !currentWord) return;
+
     if (rating === 'remembered') {
       soundSynth.playCorrect();
     } else {
@@ -94,7 +114,22 @@ export const FlashcardMode: React.FC<FlashcardModeProps> = ({
     onUpdateStat(currentWord.id, rating);
 
     if (currentIndex < words.length - 1) {
-      setCurrentIndex((prev) => prev + 1);
+      // 關鍵修復：轉場期間絕不讓學生偷看到下一張卡片的中文答案
+      // 步驟 1：立即淡出卡片並鎖定操作
+      setIsSwitching(true);
+
+      // 步驟 2：在卡片不可見 (opacity-0) 時，瞬間重置翻面與答案狀態，並前進到下一題
+      setTimeout(() => {
+        setIsFlipped(false);
+        setRevealedWord(null);
+        setShowHint(false);
+        setCurrentIndex((prev) => prev + 1);
+
+        // 步驟 3：微延遲後讓正面優雅淡入，新單字隨之自動發音
+        setTimeout(() => {
+          setIsSwitching(false);
+        }, 50);
+      }, 130);
     } else {
       fireCelebrationConfetti();
       soundSynth.playLevelClear();
@@ -103,8 +138,14 @@ export const FlashcardMode: React.FC<FlashcardModeProps> = ({
   };
 
   const handleCardClick = () => {
+    if (isSwitching) return;
     soundSynth.playFlip();
-    setIsFlipped((prev) => !prev);
+    if (!isFlipped) {
+      setRevealedWord(currentWord);
+      setIsFlipped(true);
+    } else {
+      setIsFlipped(false);
+    }
   };
 
   return (
@@ -143,12 +184,14 @@ export const FlashcardMode: React.FC<FlashcardModeProps> = ({
       </div>
 
       {/* 3D Flip Card Container */}
-      <div className="perspective-1000 w-full min-h-[380px] sm:min-h-[420px] cursor-pointer group">
+      <div className={`perspective-1000 w-full min-h-[380px] sm:min-h-[420px] cursor-pointer group transition-all duration-150 ${
+        isSwitching ? 'opacity-0 scale-95 -translate-x-3 pointer-events-none' : 'opacity-100 scale-100 translate-x-0'
+      }`}>
         <div
           onClick={handleCardClick}
-          className={`relative w-full h-full min-h-[380px] sm:min-h-[420px] duration-500 transform-style-3d transition-transform shadow-2xl rounded-3xl border border-slate-100 bg-white ${
-            isFlipped ? 'rotate-y-180' : ''
-          }`}
+          className={`relative w-full h-full min-h-[380px] sm:min-h-[420px] transform-style-3d shadow-2xl rounded-3xl border border-slate-100 bg-white ${
+            isSwitching ? 'transition-none' : 'duration-500 transition-transform'
+          } ${isFlipped ? 'rotate-y-180' : ''}`}
         >
           {/* Card Front Side (English + Audio) */}
           <div className="absolute inset-0 w-full h-full backface-hidden rounded-3xl p-8 flex flex-col justify-between items-center text-center bg-gradient-to-b from-white via-slate-50 to-indigo-50/30">
@@ -170,8 +213,8 @@ export const FlashcardMode: React.FC<FlashcardModeProps> = ({
             </div>
 
             {/* Main Word */}
-            <div className="my-auto space-y-3">
-              <h2 className="text-4xl sm:text-5xl font-black text-slate-900 tracking-tight leading-tight">
+            <div className="my-auto space-y-3 w-full max-h-[220px] sm:max-h-[250px] overflow-y-auto px-2">
+              <h2 className={`${getWordFontSize(currentWord.word)} font-black text-slate-900 tracking-tight leading-tight break-words`}>
                 {currentWord.word}
               </h2>
 
@@ -211,47 +254,50 @@ export const FlashcardMode: React.FC<FlashcardModeProps> = ({
           <div className="absolute inset-0 w-full h-full backface-hidden rotate-y-180 rounded-3xl p-8 flex flex-col justify-between items-center text-center bg-gradient-to-b from-slate-900 via-indigo-950 to-slate-900 text-white shadow-2xl">
             
             <div className="w-full flex items-center justify-between text-indigo-300 text-xs font-bold">
-              <span>{currentWord.partOfSpeech || (currentWord.sectionCode ? `單元小節: ${currentWord.sectionCode}` : '')}</span>
-              {currentWord.phonetic && (
+              <span>{displayedBackWord.partOfSpeech || (displayedBackWord.sectionCode ? `單元小節: ${displayedBackWord.sectionCode}` : '')}</span>
+              {displayedBackWord.phonetic && (
                 <span className="font-mono text-xs sm:text-sm text-yellow-300 bg-white/10 px-3 py-1 rounded-full border border-white/20 font-bold">
-                  音標：{currentWord.phonetic}
+                  音標：{displayedBackWord.phonetic}
                 </span>
               )}
             </div>
 
             {/* Back Chinese Word */}
-            <div className="my-auto space-y-3 max-w-lg">
-              <h3 className="text-3xl sm:text-4xl font-black text-yellow-300 tracking-tight leading-snug">
-                {currentWord.translation}
+            <div className="my-auto space-y-3 max-w-lg w-full max-h-[230px] sm:max-h-[260px] overflow-y-auto px-2">
+              <h3 className={`${getTransFontSize(displayedBackWord.translation)} font-black text-yellow-300 tracking-tight leading-snug break-words`}>
+                {displayedBackWord.translation}
               </h3>
 
-              {currentWord.phonetic && (
+              {displayedBackWord.phonetic && (
                 <p className="font-mono text-sm sm:text-base text-indigo-200 font-bold">
-                  {currentWord.phonetic}
+                  {displayedBackWord.phonetic}
                 </p>
               )}
 
-
-              <div className="p-4 rounded-2xl bg-white/10 backdrop-blur-md border border-white/15 space-y-2 text-left">
-                <div className="flex items-start justify-between">
-                  <p className="text-sm font-semibold text-indigo-100">
-                    {currentWord.exampleEn}
-                  </p>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      speakWord(currentWord.exampleEn, speechRate);
-                    }}
-                    className="p-1.5 rounded-lg bg-white/20 hover:bg-white/30 text-white ml-2 shrink-0"
-                    title="朗讀例句"
-                  >
-                    <Volume1 className="w-4 h-4" />
-                  </button>
+              {displayedBackWord.exampleEn && (
+                <div className="p-4 rounded-2xl bg-white/10 backdrop-blur-md border border-white/15 space-y-2 text-left">
+                  <div className="flex items-start justify-between">
+                    <p className="text-sm font-semibold text-indigo-100">
+                      {displayedBackWord.exampleEn}
+                    </p>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        speakWord(displayedBackWord.exampleEn, speechRate);
+                      }}
+                      className="p-1.5 rounded-lg bg-white/20 hover:bg-white/30 text-white ml-2 shrink-0"
+                      title="朗讀例句"
+                    >
+                      <Volume1 className="w-4 h-4" />
+                    </button>
+                  </div>
+                  {displayedBackWord.exampleZh && (
+                    <p className="text-xs text-slate-300 font-medium">
+                      {displayedBackWord.exampleZh}
+                    </p>
+                  )}
                 </div>
-                <p className="text-xs text-slate-300 font-medium">
-                  {currentWord.exampleZh}
-                </p>
-              </div>
+              )}
             </div>
 
             <div className="text-xs font-bold text-indigo-300/80">
@@ -266,7 +312,8 @@ export const FlashcardMode: React.FC<FlashcardModeProps> = ({
       <div className="grid grid-cols-3 gap-3 pt-2">
         <button
           onClick={() => handleRating('forgot')}
-          className="py-4 px-3 rounded-2xl bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 font-black text-xs sm:text-sm flex flex-col items-center justify-center space-y-1 transition-all active:scale-95 shadow-xs"
+          disabled={isSwitching}
+          className={`py-4 px-3 rounded-2xl bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 font-black text-xs sm:text-sm flex flex-col items-center justify-center space-y-1 transition-all active:scale-95 shadow-xs ${isSwitching ? 'opacity-50 cursor-not-allowed' : ''}`}
         >
           <XCircle className="w-6 h-6 text-rose-500" />
           <span>❤️ 忘記 / 不會</span>
@@ -275,7 +322,8 @@ export const FlashcardMode: React.FC<FlashcardModeProps> = ({
 
         <button
           onClick={() => handleRating('fuzzy')}
-          className="py-4 px-3 rounded-2xl bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-800 font-black text-xs sm:text-sm flex flex-col items-center justify-center space-y-1 transition-all active:scale-95 shadow-xs"
+          disabled={isSwitching}
+          className={`py-4 px-3 rounded-2xl bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-800 font-black text-xs sm:text-sm flex flex-col items-center justify-center space-y-1 transition-all active:scale-95 shadow-xs ${isSwitching ? 'opacity-50 cursor-not-allowed' : ''}`}
         >
           <HelpCircle className="w-6 h-6 text-amber-500" />
           <span>💛 模糊 / 似曾相識</span>
@@ -284,7 +332,8 @@ export const FlashcardMode: React.FC<FlashcardModeProps> = ({
 
         <button
           onClick={() => handleRating('remembered')}
-          className="py-4 px-3 rounded-2xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-800 font-black text-xs sm:text-sm flex flex-col items-center justify-center space-y-1 transition-all active:scale-95 shadow-xs"
+          disabled={isSwitching}
+          className={`py-4 px-3 rounded-2xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-800 font-black text-xs sm:text-sm flex flex-col items-center justify-center space-y-1 transition-all active:scale-95 shadow-xs ${isSwitching ? 'opacity-50 cursor-not-allowed' : ''}`}
         >
           <CheckCircle2 className="w-6 h-6 text-emerald-500" />
           <span>💚 記得 / 完全精通</span>

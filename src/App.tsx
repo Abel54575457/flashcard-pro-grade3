@@ -336,6 +336,7 @@ export function App() {
             onUpdateStat={handleUpdateWordStat}
             onBack={() => setCurrentMode('levels')}
             speechRate={speechRate}
+            seatNumber={userProfile.seatNumber}
           />
         )}
 

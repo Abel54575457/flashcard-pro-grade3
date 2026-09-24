@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { WordItem } from '../types';
 import { speakWord } from '../services/tts';
 import { soundSynth } from '../services/soundEffects';
@@ -20,6 +20,7 @@ interface CardTile {
   type: 'en' | 'zh';
   isFlipped: boolean;
   isMatched: boolean;
+  isWrong?: boolean;
 }
 
 export const MemoryMatchGame: React.FC<MemoryMatchGameProps> = ({
@@ -36,6 +37,7 @@ export const MemoryMatchGame: React.FC<MemoryMatchGameProps> = ({
   const [combo, setCombo] = useState<number>(0);
   const [timeLeft, setTimeLeft] = useState<number>(60);
   const [isGameOver, setIsGameOver] = useState<boolean>(false);
+  const failureTimerRef = useRef<number | null>(null);
 
   // 初始化連連看卡牌 (從本關挑選 6 個單字 = 12 張牌)
   useEffect(() => {
@@ -58,7 +60,21 @@ export const MemoryMatchGame: React.FC<MemoryMatchGameProps> = ({
     return () => clearInterval(timer);
   }, [timeLeft, isGameOver]);
 
+  // 清理計時器
+  useEffect(() => {
+    return () => {
+      if (failureTimerRef.current) {
+        clearTimeout(failureTimerRef.current);
+      }
+    };
+  }, []);
+
   const initGame = () => {
+    if (failureTimerRef.current) {
+      clearTimeout(failureTimerRef.current);
+      failureTimerRef.current = null;
+    }
+
     const selectedWords = [...words].sort(() => Math.random() - 0.5).slice(0, 6);
     const tiles: CardTile[] = [];
 
@@ -70,6 +86,7 @@ export const MemoryMatchGame: React.FC<MemoryMatchGameProps> = ({
         type: 'en',
         isFlipped: false,
         isMatched: false,
+        isWrong: false,
       });
       tiles.push({
         uid: `zh_${w.id}_${Math.random()}`,
@@ -78,6 +95,7 @@ export const MemoryMatchGame: React.FC<MemoryMatchGameProps> = ({
         type: 'zh',
         isFlipped: false,
         isMatched: false,
+        isWrong: false,
       });
     });
 
@@ -91,7 +109,33 @@ export const MemoryMatchGame: React.FC<MemoryMatchGameProps> = ({
   };
 
   const handleCardClick = (clickedCard: CardTile) => {
-    if (clickedCard.isFlipped || clickedCard.isMatched || flippedCards.length >= 2) return;
+    if (clickedCard.isFlipped || clickedCard.isMatched) return;
+
+    // 💡 極速連點優化：若上一組失敗仍處於短暫顯示狀態，此時點擊新卡片，立即取消延遲並翻開新卡！
+    if (flippedCards.length >= 2) {
+      if (failureTimerRef.current) {
+        clearTimeout(failureTimerRef.current);
+        failureTimerRef.current = null;
+
+        setCards((prev) =>
+          prev.map((c) =>
+            c.uid === clickedCard.uid
+              ? { ...c, isFlipped: true, isWrong: false }
+              : c.isMatched
+              ? c
+              : { ...c, isFlipped: false, isWrong: false }
+          )
+        );
+
+        soundSynth.playFlip();
+        if (clickedCard.type === 'en') {
+          speakWord(clickedCard.text, speechRate);
+        }
+        setFlippedCards([clickedCard]);
+        return;
+      }
+      return;
+    }
 
     soundSynth.playFlip();
 
@@ -100,7 +144,7 @@ export const MemoryMatchGame: React.FC<MemoryMatchGameProps> = ({
     }
 
     const updated = cards.map((c) =>
-      c.uid === clickedCard.uid ? { ...c, isFlipped: true } : c
+      c.uid === clickedCard.uid ? { ...c, isFlipped: true, isWrong: false } : c
     );
     setCards(updated);
 
@@ -118,7 +162,7 @@ export const MemoryMatchGame: React.FC<MemoryMatchGameProps> = ({
         setMatchedPairs((prev) => {
           const nextPairs = prev + 1;
           if (nextPairs === 6) {
-            setTimeout(() => endGame(true), 500);
+            setTimeout(() => endGame(true), 350);
           }
           return nextPairs;
         });
@@ -129,23 +173,33 @@ export const MemoryMatchGame: React.FC<MemoryMatchGameProps> = ({
         setTimeout(() => {
           setCards((prev) =>
             prev.map((c) =>
-              c.wordId === first.wordId ? { ...c, isMatched: true } : c
+              c.wordId === first.wordId ? { ...c, isMatched: true, isFlipped: true } : c
             )
           );
           setFlippedCards([]);
-        }, 500);
+        }, 300);
       } else {
-        // 配對失敗
+        // 配對失敗：將原本過長的 1000ms 大幅縮短至 350ms，並給予紅色視覺反饋
         soundSynth.playWrong();
         setCombo(0);
-        setTimeout(() => {
+
+        setCards((prev) =>
+          prev.map((c) =>
+            c.uid === first.uid || c.uid === second.uid ? { ...c, isWrong: true } : c
+          )
+        );
+
+        failureTimerRef.current = window.setTimeout(() => {
           setCards((prev) =>
             prev.map((c) =>
-              c.uid === first.uid || c.uid === second.uid ? { ...c, isFlipped: false } : c
+              c.uid === first.uid || c.uid === second.uid
+                ? { ...c, isFlipped: false, isWrong: false }
+                : c
             )
           );
           setFlippedCards([]);
-        }, 1000);
+          failureTimerRef.current = null;
+        }, 350);
       }
     }
   };
@@ -195,9 +249,11 @@ export const MemoryMatchGame: React.FC<MemoryMatchGameProps> = ({
                 key={card.uid}
                 onClick={() => handleCardClick(card)}
                 disabled={card.isMatched}
-                className={`h-28 sm:h-32 rounded-3xl font-black text-base sm:text-xl p-3 flex items-center justify-center text-center transition-all duration-300 transform active:scale-95 shadow-md border-2 ${
+                className={`h-28 sm:h-32 rounded-3xl font-black text-base sm:text-xl p-3 flex items-center justify-center text-center transition-all duration-200 transform active:scale-95 shadow-md border-2 ${
                   card.isMatched
                     ? 'bg-emerald-500 text-white border-emerald-500 opacity-60 cursor-default scale-95'
+                    : card.isWrong
+                    ? 'bg-rose-500 text-white border-rose-600 shadow-rose-200 animate-pulse'
                     : isVisible
                     ? card.type === 'en'
                       ? 'bg-indigo-600 text-white border-indigo-600 shadow-indigo-200'

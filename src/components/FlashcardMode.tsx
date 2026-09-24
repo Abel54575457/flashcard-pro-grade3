@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { WordItem, WordStat } from '../types';
 import { speakWord } from '../services/tts';
 import { updateWordStatOnResult } from '../services/spacedRepetition';
 import { soundSynth } from '../services/soundEffects';
+import { saveDeckProgress, getDeckProgress, clearDeckProgress } from '../services/storage';
 import {
   Volume2,
   RotateCw,
@@ -15,7 +16,10 @@ import {
   Lightbulb,
   Award,
   ArrowLeft,
-  Volume1
+  Volume1,
+  BookmarkCheck,
+  Play,
+  RotateCcw
 } from 'lucide-react';
 import { fireCelebrationConfetti, clearConfetti } from '../utils/confettiHelper';
 
@@ -25,6 +29,7 @@ interface FlashcardModeProps {
   onUpdateStat: (wordId: string, rating: 'remembered' | 'fuzzy' | 'forgot') => void;
   onBack: () => void;
   speechRate: number;
+  seatNumber?: string;
 }
 
 export const FlashcardMode: React.FC<FlashcardModeProps> = ({
@@ -33,6 +38,7 @@ export const FlashcardMode: React.FC<FlashcardModeProps> = ({
   onUpdateStat,
   onBack,
   speechRate,
+  seatNumber = '01',
 }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
@@ -40,6 +46,29 @@ export const FlashcardMode: React.FC<FlashcardModeProps> = ({
   const [isFinished, setIsFinished] = useState(false);
   const [isSwitching, setIsSwitching] = useState(false);
   const [revealedWord, setRevealedWord] = useState<WordItem | null>(null);
+
+  // 斷點進度續刷狀態
+  const [savedResumeIndex, setSavedResumeIndex] = useState<number | null>(null);
+  const [hasPromptedResume, setHasPromptedResume] = useState(false);
+
+  // 產生本卡組唯一的持久化識別 Key
+  const deckKey = useMemo(() => {
+    if (!words || words.length === 0) return 'empty';
+    const first = words[0];
+    const last = words[words.length - 1];
+    return `l${first.levelId || 1}_s${first.sectionCode || 'ALL'}_${first.id}_${last.id}_n${words.length}`;
+  }, [words]);
+
+  // 初始化檢查是否曾中途離開本關卡
+  useEffect(() => {
+    const saved = getDeckProgress(seatNumber, deckKey);
+    if (saved && saved.currentIndex > 0 && saved.currentIndex < words.length) {
+      setSavedResumeIndex(saved.currentIndex);
+    } else {
+      setSavedResumeIndex(null);
+    }
+    setHasPromptedResume(false);
+  }, [deckKey, seatNumber, words.length]);
 
   const currentWord = words[currentIndex];
   const currentStat = currentWord ? wordStats[currentWord.id] : undefined;
@@ -81,6 +110,7 @@ export const FlashcardMode: React.FC<FlashcardModeProps> = ({
           <div className="pt-4 flex justify-center space-x-4">
             <button
               onClick={() => {
+                clearDeckProgress(seatNumber, deckKey);
                 setCurrentIndex(0);
                 setIsFinished(false);
                 setIsFlipped(false);
@@ -114,6 +144,10 @@ export const FlashcardMode: React.FC<FlashcardModeProps> = ({
     onUpdateStat(currentWord.id, rating);
 
     if (currentIndex < words.length - 1) {
+      const nextIndex = currentIndex + 1;
+      // 自動記錄斷點進度：學生隨時離開都能秒接續
+      saveDeckProgress(seatNumber, deckKey, nextIndex, words.length);
+
       // 關鍵修復：轉場期間絕不讓學生偷看到下一張卡片的中文答案
       // 步驟 1：立即淡出卡片並鎖定操作
       setIsSwitching(true);
@@ -123,7 +157,7 @@ export const FlashcardMode: React.FC<FlashcardModeProps> = ({
         setIsFlipped(false);
         setRevealedWord(null);
         setShowHint(false);
-        setCurrentIndex((prev) => prev + 1);
+        setCurrentIndex(nextIndex);
 
         // 步驟 3：微延遲後讓正面優雅淡入，新單字隨之自動發音
         setTimeout(() => {
@@ -131,6 +165,8 @@ export const FlashcardMode: React.FC<FlashcardModeProps> = ({
         }, 50);
       }, 130);
     } else {
+      // 刷完全部單字，自動清除該關卡的斷點紀錄
+      clearDeckProgress(seatNumber, deckKey);
       fireCelebrationConfetti();
       soundSynth.playLevelClear();
       setIsFinished(true);
@@ -174,6 +210,59 @@ export const FlashcardMode: React.FC<FlashcardModeProps> = ({
           )}
         </div>
       </div>
+
+      {/* 斷點進度續刷提示橫幅 */}
+      {savedResumeIndex !== null && !hasPromptedResume && (
+        <div className="bg-gradient-to-r from-amber-50 via-indigo-50 to-emerald-50 border-2 border-indigo-200 rounded-3xl p-4 sm:p-5 shadow-lg flex flex-col sm:flex-row items-center justify-between gap-4 animate-in slide-in-from-top-3 duration-300">
+          <div className="flex items-center space-x-3.5 text-slate-800">
+            <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-indigo-600 text-white flex items-center justify-center font-bold shadow-md shadow-indigo-200 shrink-0">
+              <BookmarkCheck className="w-6 h-6 text-yellow-300" />
+            </div>
+            <div>
+              <div className="flex items-center space-x-2">
+                <h4 className="text-sm font-black text-slate-900">
+                  發現上次學習進度！
+                </h4>
+                <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-800">
+                  斷點記憶
+                </span>
+              </div>
+              <p className="text-xs text-slate-600 mt-0.5">
+                您上次練習停留在第 <span className="font-extrabold text-indigo-700 text-sm">{savedResumeIndex + 1}</span> / {words.length} 個單字，是否直接接續？
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center space-x-2 w-full sm:w-auto shrink-0">
+            <button
+              onClick={() => {
+                soundSynth.playCorrect();
+                setCurrentIndex(savedResumeIndex);
+                setHasPromptedResume(true);
+                setSavedResumeIndex(null);
+              }}
+              className="flex-1 sm:flex-initial px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-black shadow-md shadow-indigo-200 transition-all active:scale-95 flex items-center justify-center space-x-1.5"
+            >
+              <Play className="w-3.5 h-3.5 fill-white" />
+              <span>繼續進度 (第 {savedResumeIndex + 1} 字)</span>
+            </button>
+
+            <button
+              onClick={() => {
+                soundSynth.playFlip();
+                clearDeckProgress(seatNumber, deckKey);
+                setCurrentIndex(0);
+                setHasPromptedResume(true);
+                setSavedResumeIndex(null);
+              }}
+              className="flex-1 sm:flex-initial px-3.5 py-2.5 rounded-xl bg-white hover:bg-slate-50 border border-slate-200 text-slate-600 text-xs font-bold transition-all active:scale-95 flex items-center justify-center space-x-1"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span>從頭開始</span>
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Progress Bar */}
       <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden">

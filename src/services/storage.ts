@@ -268,3 +268,58 @@ export function mergeCustomWords(newWords: WordItem[]): WordItem[] {
   saveCustomWords(merged);
   return merged;
 }
+
+// ==========================================
+// 關卡單字斷點續刷與進度記憶服務
+// ==========================================
+const PROGRESS_PREFIX = 'flashcard_pro_g3_deck_progress_';
+
+export interface DeckProgress {
+  seatNumber: string;
+  deckKey: string;
+  currentIndex: number;
+  totalWords: number;
+  updatedAt: string;
+}
+
+export function saveDeckProgress(
+  seatNumber: string,
+  deckKey: string,
+  currentIndex: number,
+  totalWords: number
+): void {
+  if (typeof window === 'undefined') return;
+  try {
+    const key = `${PROGRESS_PREFIX}${seatNumber}_${deckKey}`;
+    const data: DeckProgress = {
+      seatNumber,
+      deckKey,
+      currentIndex,
+      totalWords,
+      updatedAt: new Date().toISOString(),
+    };
+    localStorage.setItem(key, JSON.stringify(data));
+  } catch (err) {
+    console.warn('Failed to save deck progress', err);
+  }
+}
+
+export function getDeckProgress(seatNumber: string, deckKey: string): DeckProgress | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const key = `${PROGRESS_PREFIX}${seatNumber}_${deckKey}`;
+    const raw = localStorage.getItem(key);
+    if (!raw) return null;
+    return JSON.parse(raw) as DeckProgress;
+  } catch {
+    return null;
+  }
+}
+
+export function clearDeckProgress(seatNumber: string, deckKey: string): void {
+  if (typeof window === 'undefined') return;
+  try {
+    const key = `${PROGRESS_PREFIX}${seatNumber}_${deckKey}`;
+    localStorage.removeItem(key);
+  } catch {}
+}

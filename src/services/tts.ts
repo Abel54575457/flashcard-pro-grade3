@@ -1,4 +1,4 @@
-// 高可靠性雙引擎英語語音朗讀系統 (Web Speech API + 全局解鎖美音真人 MP3 引擎)
+// 高可靠性多國語音朗讀系統 (Web Speech API + 全局解鎖美音/法音/歐語真人 MP3 雙引擎)
 
 let isAudioUnlocked = false;
 let globalAudioPlayer: HTMLAudioElement | null = null;
@@ -53,55 +53,150 @@ export function isTTSSupported(): boolean {
   return typeof window !== 'undefined';
 }
 
-// 線上真人美音 MP3 發音引擎
-function playOnlineMP3(text: string, rate: number = 1.0): void {
+/**
+ * 智慧語種自動偵測器
+ * 依據單字文字、特殊變音符號（如法文 é/è/ê/ô/ç、德文 ä/ö/ü、義大利文）、或傳入的中文釋義線索判斷發音語種
+ */
+export function detectLanguage(text: string, langOrContext?: string): string {
+  if (langOrContext) {
+    const hint = langOrContext.toLowerCase();
+    if (hint.includes('法文') || hint.includes('法語') || hint === 'fr' || hint.startsWith('fr-')) {
+      return 'fr-FR';
+    }
+    if (hint.includes('德文') || hint.includes('德語') || hint === 'de' || hint.startsWith('de-')) {
+      return 'de-DE';
+    }
+    if (hint.includes('義大利文') || hint.includes('義文') || hint.includes('拉丁文') || hint === 'it' || hint.startsWith('it-')) {
+      return 'it-IT';
+    }
+    if (hint.includes('日文') || hint === 'ja' || hint.startsWith('ja-')) {
+      return 'ja-JP';
+    }
+    if (hint.startsWith('en-') || hint === 'en') {
+      return 'en-US';
+    }
+  }
+
+  const lower = text.toLowerCase().trim();
+
+  // 1. 法文字詞與法文專屬變音符號偵測
+  const frenchCharRegex = /[éèêëàâôçîïœæùûÉÈÊÀÂÔÇÎ]/;
+  const frenchKeywords = [
+    'café', 'caffé', 'bistro', 'restaurant', 'restaurer', 'table d\'hôte', 'maître', 'sommelier',
+    'boulanger', 'taverne', 'sauté', 'guéridon', 'débarrasseur', 'estouffade', 'caneton',
+    'bourguignon', 'bourguignonne', 'consommé', 'bouillabaisse', 'marseillaise', 'foie gras',
+    'truffes', 'mise en place', 'clefs d\'or', 'étoile verte', 'grand hôtel', 'le méridien',
+    'niçoise', 'gratin', 'escargots', 'hospice', 'vitesse'
+  ];
+
+  if (frenchCharRegex.test(text) || frenchKeywords.some(kw => lower.includes(kw))) {
+    return 'fr-FR';
+  }
+
+  // 2. 德文字詞偵測
+  if (lower.includes('schwarzwälder') || lower.includes('kirschtorte') || /[äöüß]/.test(lower)) {
+    return 'de-DE';
+  }
+
+  // 3. 義大利文偵測
+  if (lower.includes('bottega') || lower.includes('caffè') || lower.includes('milanese') || lower.includes('osso buco') || lower.includes('hospitale')) {
+    return 'it-IT';
+  }
+
+  // 預設英語 (美語)
+  return 'en-US';
+}
+
+/**
+ * 清理朗讀文字，去除括號中文、符號標記與連字干擾
+ */
+function sanitizeSpeechText(text: string): string {
+  let cleaned = text.trim();
+
+  // 移除全形/半形括號及內部中文（例如："（法文）", "(GRO)"）
+  cleaned = cleaned.replace(/[\(（][^()（）]*[\)）]/g, ' ');
+
+  // 移除箭頭符號與分隔號
+  cleaned = cleaned.replace(/[→\u2192]/g, ' ');
+  cleaned = cleaned.replace(/[、\u3001]/g, ', ');
+
+  // 去除結尾單獨的大寫殘留（如 "sauté vegetable W"）
+  cleaned = cleaned.replace(/\s+[A-Z]$/, '');
+
+  // 去除 P: Phone field 中的代號開頭
+  cleaned = cleaned.replace(/^[A-Z]:\s*/, '');
+
+  // 壓縮連續空白
+  cleaned = cleaned.replace(/\s+/g, ' ').trim();
+
+  return cleaned || text.trim();
+}
+
+// 線上真人 MP3 發音引擎 (支援多國語音備援)
+function playOnlineMP3(text: string, rate: number = 1.0, targetLang: string = 'en-US'): void {
   const player = getOrCreateAudioPlayer();
   if (!player) return;
 
   try {
     player.pause();
-    const cleanText = text.trim();
-
-    // 優先使用有道美式英語接口 (Type 2 代表純正美語)
-    const youdaoUrl = `https://dict.youdao.com/dictvoice?audio=${encodeURIComponent(cleanText)}&type=2`;
-    const googleUrl = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(cleanText)}&tl=en&client=tw-ob`;
+    const cleanText = sanitizeSpeechText(text);
+    if (!cleanText) return;
 
     player.playbackRate = rate < 0.9 ? 0.75 : 1.0;
-    player.src = youdaoUrl;
+    const langPrefix = targetLang.split('-')[0].toLowerCase();
 
-    let hasTriedGoogle = false;
+    // 英語優先使用有道美音，非英語或有道失敗時切換至 Google Translate 原生真人發音
+    if (langPrefix === 'en') {
+      const youdaoUrl = `https://dict.youdao.com/dictvoice?audio=${encodeURIComponent(cleanText)}&type=2`;
+      const googleUrl = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(cleanText)}&tl=en&client=tw-ob`;
 
-    player.onerror = () => {
-      if (!hasTriedGoogle) {
-        hasTriedGoogle = true;
-        player.src = googleUrl;
-        player.play().catch((err) => console.warn('Google TTS play failed:', err));
-      }
-    };
+      player.src = youdaoUrl;
+      let hasTriedGoogle = false;
 
-    player.play().catch(() => {
-      // 若有道播不出，切換至 Google TTS
-      if (!hasTriedGoogle) {
-        hasTriedGoogle = true;
-        player.src = googleUrl;
-        player.play().catch((err) => console.warn('Backup TTS play failed:', err));
-      }
-    });
+      player.onerror = () => {
+        if (!hasTriedGoogle) {
+          hasTriedGoogle = true;
+          player.src = googleUrl;
+          player.play().catch((err) => console.warn('Google TTS backup failed:', err));
+        }
+      };
+
+      player.play().catch(() => {
+        if (!hasTriedGoogle) {
+          hasTriedGoogle = true;
+          player.src = googleUrl;
+          player.play().catch((err) => console.warn('Google TTS play failed:', err));
+        }
+      });
+    } else {
+      // 法文、德文、義大利文等：直接呼叫 Google Translate 原生多國發音 (如 tl=fr)
+      const googleMultiLangUrl = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(cleanText)}&tl=${langPrefix}&client=tw-ob`;
+      player.src = googleMultiLangUrl;
+      player.play().catch((err) => console.warn(`Multi-lang TTS (${langPrefix}) play failed:`, err));
+    }
   } catch (err) {
     console.warn('MP3 playback failed:', err);
   }
 }
 
-// 主發音入口 (Web Speech API 優先，遇凍結/阻擋/無語音時 250ms 內自動無縫切換至 MP3)
+/**
+ * 主發音入口 (Web Speech API 優先，自動辨識法語/德語/義語/美語，遇凍結/阻擋時 250ms 內自動無縫切換至 MP3)
+ * @param text 要朗讀的文字
+ * @param rate 語速 (0.8x 或 1.0x)
+ * @param pitch 音調 (預設 1.0)
+ * @param langOrContext 語種代碼 (如 'fr-FR', 'en-US') 或含有 "（法文）" 等資訊的中文釋義字串
+ */
 export function speakWord(
   text: string,
   rate: number = 1.0,
   pitch: number = 1.0,
-  lang: string = 'en-US'
+  langOrContext?: string
 ): void {
   if (typeof window === 'undefined' || !text || !text.trim()) return;
 
-  const cleanText = text.trim();
+  const targetLang = detectLanguage(text, langOrContext);
+  const cleanText = sanitizeSpeechText(text);
+  if (!cleanText) return;
 
   // 若有線上 MP3 正在播放，先關閉
   if (globalAudioPlayer) {
@@ -115,17 +210,27 @@ export function speakWord(
       window.speechSynthesis.cancel();
 
       const utterance = new SpeechSynthesisUtterance(cleanText);
-      utterance.lang = lang;
+      utterance.lang = targetLang;
       utterance.rate = rate;
       utterance.pitch = pitch;
 
       const voices = window.speechSynthesis.getVoices();
-      const englishVoice =
-        voices.find((v) => v.lang === 'en-US' && (v.name.includes('Google') || v.name.includes('Natural') || v.name.includes('Samantha') || v.name.includes('David'))) ||
-        voices.find((v) => v.lang === 'en-US' || v.lang.startsWith('en'));
+      const langPrefix = targetLang.split('-')[0].toLowerCase();
 
-      if (englishVoice) {
-        utterance.voice = englishVoice;
+      // 優先尋找符合目標語種（例如法文 fr、美語 en、德文 de）的自然人聲
+      let matchedVoice = voices.find(
+        (v) =>
+          v.lang.toLowerCase().startsWith(langPrefix) &&
+          (v.name.includes('Google') ||
+            v.name.includes('Natural') ||
+            v.name.includes('Thomas') ||
+            v.name.includes('Amelie') ||
+            v.name.includes('Samantha') ||
+            v.name.includes('David'))
+      ) || voices.find((v) => v.lang.toLowerCase().startsWith(langPrefix));
+
+      if (matchedVoice) {
+        utterance.voice = matchedVoice;
       }
 
       let hasStarted = false;
@@ -136,7 +241,7 @@ export function speakWord(
 
       utterance.onerror = () => {
         if (!hasStarted) {
-          playOnlineMP3(cleanText, rate);
+          playOnlineMP3(cleanText, rate, targetLang);
         }
       };
 
@@ -145,7 +250,7 @@ export function speakWord(
       // 250ms 快照監測：若 Chrome/Safari/手機阻塞未能及時發音，立即切換至線上 MP3
       setTimeout(() => {
         if (!hasStarted) {
-          playOnlineMP3(cleanText, rate);
+          playOnlineMP3(cleanText, rate, targetLang);
         }
       }, 250);
 
@@ -156,7 +261,7 @@ export function speakWord(
   }
 
   // 2. 無 Web Speech API 時直接播放線上 MP3
-  playOnlineMP3(cleanText, rate);
+  playOnlineMP3(cleanText, rate, targetLang);
 }
 
 export function cancelSpeech(): void {

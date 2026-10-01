@@ -5,7 +5,8 @@ import { syncStudentToGoogleSheets } from './googleSheets';
 
 const USER_PROFILE_KEY = 'flashcard_pro_g3_user_profile';
 const LAST_SEAT_KEY = 'flashcard_pro_g3_last_seat';
-const CUSTOM_WORDS_KEY = 'flashcard_pro_g3_words_v1';
+const CUSTOM_WORDS_KEY = 'flashcard_pro_g3_words_v2';
+const LEGACY_CUSTOM_WORDS_KEY = 'flashcard_pro_g3_words_v1';
 
 const getSeatKey = (seat: string) => `flashcard_pro_g3_user_profile_${seat}`;
 
@@ -212,6 +213,10 @@ function updateStreakDays(profile: UserProfile): UserProfile {
 // 取得全冊單字庫
 export function getCustomWords(): WordItem[] {
   if (typeof window === 'undefined') return GRADE_3_WORDS;
+  // 清理舊版本快取，避免載入先前未修復之轉義符號字串
+  if (localStorage.getItem(LEGACY_CUSTOM_WORDS_KEY)) {
+    localStorage.removeItem(LEGACY_CUSTOM_WORDS_KEY);
+  }
   const raw = localStorage.getItem(CUSTOM_WORDS_KEY);
   if (!raw) {
     saveCustomWords(GRADE_3_WORDS);

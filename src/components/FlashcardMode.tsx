@@ -92,7 +92,7 @@ export const FlashcardMode: React.FC<FlashcardModeProps> = ({
   // 切換到新單字且動畫完成時自動發音
   useEffect(() => {
     if (currentWord && !isSwitching) {
-      speakWord(currentWord.word, speechRate);
+      speakWord(currentWord.word, speechRate, 1.0, currentWord.translation);
     }
   }, [currentIndex, isSwitching, speechRate]);
 
@@ -317,7 +317,7 @@ export const FlashcardMode: React.FC<FlashcardModeProps> = ({
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    speakWord(currentWord.word, speechRate);
+                    speakWord(currentWord.word, speechRate, 1.0, currentWord.translation);
                   }}
                   className="px-4 py-2 rounded-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center space-x-2 shadow-md shadow-indigo-200 transition-transform active:scale-95"
                 >

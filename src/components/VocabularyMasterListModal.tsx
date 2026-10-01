@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { WordItem, UserProfile } from '../types';
 import { soundSynth } from '../services/soundEffects';
+import { speakWord } from '../services/tts';
 import { LEVEL_NAMES, LEVEL_SECTIONS } from '../data/grade3Words';
 import {
   BookOpen,
@@ -64,8 +65,8 @@ export const VocabularyMasterListModal: React.FC<VocabularyMasterListModalProps>
     window.print();
   };
 
-  const playWordAudio = (word: string) => {
-    soundSynth.speakWord(word);
+  const playWordAudio = (word: string, translation?: string) => {
+    speakWord(word, 1.0, 1.0, translation);
   };
 
   return (
@@ -269,7 +270,7 @@ export const VocabularyMasterListModal: React.FC<VocabularyMasterListModalProps>
                           )}
                         </div>
                         <button
-                          onClick={() => playWordAudio(word.word)}
+                          onClick={() => playWordAudio(word.word, word.translation)}
                           className="p-1.5 rounded-lg text-stone-400 hover:text-amber-800 hover:bg-amber-50 transition-all shrink-0 ml-2"
                           title="朗讀發音"
                         >
@@ -324,7 +325,7 @@ export const VocabularyMasterListModal: React.FC<VocabularyMasterListModalProps>
                       <td className="py-2.5 px-3 text-stone-500 text-[11px]">{word.hint || `p.${word.page}`}</td>
                       <td className="py-2.5 px-3 text-center">
                         <button
-                          onClick={() => playWordAudio(word.word)}
+                          onClick={() => playWordAudio(word.word, word.translation)}
                           className="p-1 rounded-md text-stone-400 hover:text-amber-800 hover:bg-amber-100 transition-all"
                           title="朗讀"
                         >

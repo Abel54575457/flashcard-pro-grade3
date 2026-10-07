@@ -24,6 +24,7 @@ interface LevelSelectorProps {
   onOpenLogin: () => void;
   onOpenGuide?: () => void;
   onOpenMasterList?: () => void;
+  onOpenGameSwitcher?: () => void;
 }
 
 export const LevelSelector: React.FC<LevelSelectorProps> = ({
@@ -34,6 +35,7 @@ export const LevelSelector: React.FC<LevelSelectorProps> = ({
   onStartDueReview,
   onOpenLogin,
   onOpenMasterList,
+  onOpenGameSwitcher,
 }) => {
   // 記錄每個關卡所選擇的特定小節分類 (預設為 'ALL' 全章練習)
   const [selectedSections, setSelectedSections] = useState<Record<number, string>>({});
@@ -172,6 +174,53 @@ export const LevelSelector: React.FC<LevelSelectorProps> = ({
             </button>
           </div>
 
+        </div>
+      </div>
+
+      {/* 3-in-1 Game Navigation Banner */}
+      <div className="bg-gradient-to-r from-stone-900 via-indigo-950 to-stone-900 rounded-3xl p-5 sm:p-6 text-white border border-stone-800 shadow-lg flex flex-col md:flex-row items-center justify-between gap-4">
+        <div className="flex items-center space-x-3.5">
+          <div className="w-12 h-12 rounded-2xl bg-amber-400 text-stone-950 flex items-center justify-center text-2xl shrink-0 font-black shadow-md">
+            🎮
+          </div>
+          <div>
+            <div className="flex items-center space-x-2">
+              <h3 className="font-extrabold text-base sm:text-lg text-white">
+                三年級 觀光餐旅學習三合一平台
+              </h3>
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-400/20 text-amber-300 border border-amber-400/30">
+                自由切換
+              </span>
+            </div>
+            <p className="text-xs text-stone-300 mt-1">
+              隨時在「單字記憶卡」、「單字闖關遊戲」與「學科小考測驗」三大平台間無縫切換！
+            </p>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2.5 shrink-0 w-full md:w-auto justify-end">
+          {onOpenGameSwitcher && (
+            <button
+              onClick={() => {
+                soundSynth.playFlip();
+                onOpenGameSwitcher();
+              }}
+              className="px-4 py-2.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-stone-950 font-black text-xs shadow-md transition-all flex items-center space-x-1.5 active:scale-95"
+            >
+              <span>🎮 快速切換遊戲</span>
+            </button>
+          )}
+
+          <a
+            href="./portal.html"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="px-3.5 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs border border-white/20 transition-all flex items-center space-x-1"
+            title="開啟三年級三大遊戲完整介紹大廳"
+          >
+            <span>🏛️ 遊戲選擇大廳</span>
+            <span className="text-[10px]">↗</span>
+          </a>
         </div>
       </div>
 

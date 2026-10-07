@@ -24,6 +24,7 @@ interface NavbarProps {
   onOpenLogin: () => void;
   onOpenGuide?: () => void;
   onOpenMasterList?: () => void;
+  onOpenGameSwitcher?: () => void;
   onUpdateTheme: (color: ThemeColor) => void;
   speechRate: number;
   onToggleSpeechRate: () => void;
@@ -39,6 +40,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenLogin,
   onOpenGuide,
   onOpenMasterList,
+  onOpenGameSwitcher,
   speechRate,
   onToggleSpeechRate,
   soundEnabled,
@@ -128,6 +130,20 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <Trophy className="w-3.5 h-3.5 text-amber-600" />
                 <span>排行榜</span>
               </button>
+
+              {onOpenGameSwitcher && (
+                <button
+                  onClick={() => {
+                    soundSynth.playFlip();
+                    onOpenGameSwitcher();
+                  }}
+                  className="px-3 py-1.5 rounded-xl transition-all flex items-center space-x-1.5 bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-amber-500/10 hover:from-indigo-500/20 hover:to-amber-500/20 text-indigo-900 border border-indigo-200/80 font-bold shadow-xs"
+                  title="切換至單字闖關或學科小考遊戲"
+                >
+                  <span className="text-sm">🎮</span>
+                  <span>切換遊戲</span>
+                </button>
+              )}
             </nav>
           </div>
 
@@ -176,6 +192,21 @@ export const Navbar: React.FC<NavbarProps> = ({
                 title="查看通關指南與說明"
               >
                 <HelpCircle className="w-4 h-4 text-amber-700" />
+              </button>
+            )}
+
+            {/* Game Switcher Button on Mobile */}
+            {onOpenGameSwitcher && (
+              <button
+                onClick={() => {
+                  soundSynth.playFlip();
+                  onOpenGameSwitcher();
+                }}
+                className="md:hidden px-2 py-1.5 rounded-xl bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-amber-500/10 hover:from-indigo-500/20 hover:to-amber-500/20 border border-indigo-300/80 text-indigo-900 font-bold transition-all shrink-0 flex items-center space-x-1"
+                title="切換至單字闖關或學科小考"
+              >
+                <span className="text-xs">🎮</span>
+                <span className="text-[11px] font-bold">換遊戲</span>
               </button>
             )}
 

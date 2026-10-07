@@ -24,6 +24,7 @@ import { MemoryMatchGame } from './components/MemoryMatchGame';
 import { MistakeNotebook } from './components/MistakeNotebook';
 import { Leaderboard } from './components/Leaderboard';
 import { TeacherDashboard } from './components/TeacherDashboard';
+import { GameSwitcherModal } from './components/GameSwitcherModal';
 
 import { initAudioUnlock } from './services/tts';
 
@@ -38,6 +39,7 @@ export function App() {
   const [isLoginOpen, setIsLoginOpen] = useState<boolean>(false);
   const [isGuideOpen, setIsGuideOpen] = useState<boolean>(false);
   const [isMasterListOpen, setIsMasterListOpen] = useState<boolean>(false);
+  const [isGameSwitcherOpen, setIsGameSwitcherOpen] = useState<boolean>(false);
   const [isFirebaseActive, setIsFirebaseActive] = useState<boolean>(false);
 
   // 初始化載入
@@ -306,6 +308,7 @@ export function App() {
         onOpenLogin={() => setIsLoginOpen(true)}
         onOpenGuide={() => setIsGuideOpen(true)}
         onOpenMasterList={() => setIsMasterListOpen(true)}
+        onOpenGameSwitcher={() => setIsGameSwitcherOpen(true)}
         onUpdateTheme={handleUpdateTheme}
         speechRate={speechRate}
         onToggleSpeechRate={handleToggleSpeechRate}
@@ -326,6 +329,7 @@ export function App() {
             onOpenLogin={() => setIsLoginOpen(true)}
             onOpenGuide={() => setIsGuideOpen(true)}
             onOpenMasterList={() => setIsMasterListOpen(true)}
+            onOpenGameSwitcher={() => setIsGameSwitcherOpen(true)}
           />
         )}
 
@@ -419,6 +423,12 @@ export function App() {
         userProfile={userProfile}
         isOpen={isMasterListOpen}
         onClose={() => setIsMasterListOpen(false)}
+      />
+
+      {/* Cross-Game Switcher Modal */}
+      <GameSwitcherModal
+        isOpen={isGameSwitcherOpen}
+        onClose={() => setIsGameSwitcherOpen(false)}
       />
     </div>
   );

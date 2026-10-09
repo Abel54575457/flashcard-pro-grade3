@@ -98,12 +98,12 @@ export function App() {
     saveLocalProfile(finalInitialProfile);
 
     // 背景同步遠端 Firebase (若開啟，非訪客才同步)
-    if (initialSeat !== '訪客') {
-      fetchUserFromFirestore(initialSeat)
+    if (effectiveSeat !== '訪客') {
+      fetchUserFromFirestore(effectiveSeat)
         .then((remote) => {
           if (remote) {
             setUserProfile((curr) => {
-              if (!curr || curr.seatNumber !== initialSeat) return curr;
+              if (!curr || curr.seatNumber !== effectiveSeat) return curr;
               const merged = mergeUserProfiles(curr, remote);
               let mergedUnlocked = merged.unlockedLevel || 1;
               for (let lvl = 1; lvl <= maxLevelId; lvl++) {
@@ -142,7 +142,7 @@ export function App() {
   // 切換學生座號或訪客登入
   const handleStudentLogin = (seatNumber: string, classCode: string, themeColor: ThemeColor) => {
     const isGuest = seatNumber === '訪客';
-    const initialProfile = loadUserProfileSync(seatNumber);
+    const initialProfile = loadUserProfileSync(seatNumber, classCode);
     const maxLevelId = Math.max(...words.map((w) => w.levelId || 1), 8);
     let autoUnlocked = isGuest ? 8 : (initialProfile.unlockedLevel || 1);
 
@@ -166,6 +166,36 @@ export function App() {
     };
     setUserProfile(updatedProfile);
     saveLocalProfile(updatedProfile);
+
+    // 同步更新 SSO 統一身分憑證
+    try {
+      if (isGuest) {
+        localStorage.setItem('tourism_sso_identity', JSON.stringify({
+          type: 'guest',
+          seat: '訪客',
+          name: '訪客體驗',
+          grade: 3,
+          updatedAt: Date.now()
+        }));
+      } else if (classCode && classCode !== '305 班' && classCode !== '三年級') {
+        localStorage.setItem('tourism_sso_identity', JSON.stringify({
+          type: 'external',
+          school: classCode,
+          name: seatNumber,
+          seat: seatNumber,
+          grade: 3,
+          updatedAt: Date.now()
+        }));
+      } else {
+        localStorage.setItem('tourism_sso_identity', JSON.stringify({
+          type: 'student',
+          seat: seatNumber,
+          name: seatNumber + ' 號同學',
+          grade: 3,
+          updatedAt: Date.now()
+        }));
+      }
+    } catch {}
 
     if (!isGuest) {
       fetchUserFromFirestore(seatNumber)

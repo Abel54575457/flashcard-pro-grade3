@@ -55,10 +55,28 @@ export function App() {
     const loadedWords = getCustomWords();
     setWords(loadedWords);
 
-    // 載入上次座號 (預設為 01)
+    // 優先檢查 URL 參數 (?seat=34 或 ?guest=1) 與 SSO 統一身分
+    const urlParams = new URLSearchParams(window.location.search);
+    const querySeat = urlParams.get('seat');
+    const isGuestParam = urlParams.get('guest');
+
+    let ssoSeat: string | null = null;
+    let ssoClassCode = '305 班';
+    try {
+      const ssoRaw = localStorage.getItem('tourism_sso_identity');
+      if (ssoRaw) {
+        const sso = JSON.parse(ssoRaw);
+        if (sso?.seat) {
+          ssoSeat = String(sso.seat);
+          if (sso.type === 'guest') ssoClassCode = '訪客專區';
+          else if (sso.type === 'external' && sso.school) ssoClassCode = sso.school;
+        }
+      }
+    } catch {}
+
     const local = getLocalProfile();
-    const initialSeat = local?.seatNumber || '01';
-    const initialProfile = loadUserProfileSync(initialSeat);
+    const effectiveSeat = querySeat || (isGuestParam === '1' ? '訪客' : null) || ssoSeat || local?.seatNumber || '01';
+    const initialProfile = loadUserProfileSync(effectiveSeat, ssoClassCode);
 
     const maxLevelId = Math.max(...loadedWords.map((w) => w.levelId || 1), 8);
     let autoUnlocked = initialProfile.seatNumber === '訪客' ? 8 : (initialProfile.unlockedLevel || 1);

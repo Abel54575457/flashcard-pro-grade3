@@ -93,6 +93,8 @@ export const LevelSelector: React.FC<LevelSelectorProps> = ({
                     <UserCheck className="w-3.5 h-3.5" />
                     <span>👤 訪客試用模式</span>
                   </>
+                ) : userProfile.classCode && userProfile.classCode !== '305 班' ? (
+                  <span>🏫 {userProfile.classCode} ‧ {userProfile.seatNumber}</span>
                 ) : (
                   <span>三年級 {userProfile.seatNumber} 號</span>
                 )}

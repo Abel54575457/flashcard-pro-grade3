@@ -163,6 +163,8 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <span className="text-amber-800 font-extrabold flex items-center space-x-1">
                   <span>👤 訪客試用</span>
                 </span>
+              ) : userProfile.classCode && userProfile.classCode !== '305 班' ? (
+                <span>🏫 {userProfile.classCode.slice(0, 4)} ‧ {userProfile.seatNumber}</span>
               ) : (
                 <span>座號 {userProfile.seatNumber}</span>
               )}

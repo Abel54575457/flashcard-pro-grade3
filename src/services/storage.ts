@@ -54,11 +54,31 @@ export function getLocalProfileForSeat(seatNumber: string): UserProfile | null {
 
 export function getLocalProfile(): UserProfile | null {
   if (typeof window === 'undefined') return null;
+
+  // 1. First priority: Check SSO unified identity
+  try {
+    const ssoRaw = localStorage.getItem('tourism_sso_identity');
+    if (ssoRaw) {
+      const sso = JSON.parse(ssoRaw);
+      if (sso && sso.seat) {
+        const ssoSeat = String(sso.seat);
+        const ssoClass = sso.type === 'guest' ? '訪客專區' : (sso.school ? sso.school : '305 班');
+        const profile = getLocalProfileForSeat(ssoSeat);
+        if (profile) return profile;
+        return createDefaultProfile(ssoSeat, ssoClass);
+      }
+    }
+  } catch {}
+
+  // 2. Second priority: LAST_SEAT_KEY
   const lastSeat = localStorage.getItem(LAST_SEAT_KEY);
   if (lastSeat) {
     const profile = getLocalProfileForSeat(lastSeat);
     if (profile) return profile;
+    return createDefaultProfile(lastSeat, lastSeat === '訪客' ? '訪客專區' : '305 班');
   }
+
+  // 3. Fallback only if no specific seat was requested
   const raw = localStorage.getItem(USER_PROFILE_KEY);
   if (!raw) return null;
   try {
@@ -82,15 +102,17 @@ export function saveLocalProfile(profile: UserProfile): void {
   }
 }
 
-
-export function loadUserProfileSync(seatNumber: string): UserProfile {
+export function loadUserProfileSync(seatNumber: string, classCode?: string): UserProfile {
   const local = getLocalProfileForSeat(seatNumber);
   if (local) {
+    if (classCode && classCode !== local.classCode) {
+      local.classCode = classCode;
+    }
     const updated = updateStreakDays(local);
     saveLocalProfile(updated);
     return updated;
   }
-  const newProfile = createDefaultProfile(seatNumber);
+  const newProfile = createDefaultProfile(seatNumber, classCode || '305 班');
   saveLocalProfile(newProfile);
   return newProfile;
 }
